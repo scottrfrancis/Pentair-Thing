@@ -147,7 +147,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--inputfile", action="store", required=False, dest="inFile", default="", help="input file with raw protocol stream")
 
 # serial port args
-parser.add_argument("-p", "--port", action="store", required=True, dest="port", default="/dev/ttyS0", help="Serial Port Device")
+parser.add_argument("-p", "--port", action="store", required=False, dest="port", default="/dev/ttyS0", help="Serial Port Device")
 parser.add_argument("-t", "--timeout", action="store", required=True, dest="timeout", default="0.5", help="Timeout to wait for events")
 
 
@@ -210,7 +210,7 @@ def do_something():
 
     state.clear()
     streamData.append(connection.listen())
-    print(json.dumps(state.getDict()))
+    logger.info(json.dumps(state.getDict()))
 
 def run():
     if not connection.isOpen():
