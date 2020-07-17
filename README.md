@@ -47,6 +47,10 @@ _NOTE_: It is necessary to enable the Serial port on the Pi and for the serial p
 ```
 pentair-control.py -p /dev/ttyS0 -t 60
 ```
+or
+```
+pentair-control.py -c True -t 0.1 -i dump.raw
+````
 
 The serial port is read by `PentairSerial.py` and splits the read buffer into 'events' or 'records' using a configurable record separator. 
 
