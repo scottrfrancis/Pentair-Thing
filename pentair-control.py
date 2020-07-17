@@ -46,6 +46,23 @@ class ObservableArray(Observable):
             self.notifyObservers(self.elements)
             self.clear()
 
+# an Observable wrapped dict
+class ObservableDict(Observable):
+    def __init__(self):
+        super().__init__()
+        self.clear()
+
+    def clear(self):
+        self.dict = {}
+
+    def append(self, newDict):
+        if len(newDict) > 0:
+            self.dict.update(newDict)
+
+    def getDict(self):
+        return self.dict
+            
+
 # takes a stream on #update and writes it to the messages object, using messages#append
 class MessageParser(Observer):
     def __init__(self, separator, messages):
@@ -85,6 +102,17 @@ class PayloadParser(Observer):
     def update(self, frames):
         self.payloads.append(list(map(self.protocol.parsePayload, frames)))
 
+class stateAggregator(Observer):
+    def __init__(self, state):
+        super().__init__()
+        self.state = state
+
+    def update(self, parsedFrames):
+        for p in parsedFrames:
+            if 'state' in p:
+                self.state.append(p['state'])
+
+
 class CSVOutput(Observer):
     def __init__(self):
         super().__init__()
@@ -119,14 +147,14 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--inputfile", action="store", required=False, dest="inFile", default="", help="input file with raw protocol stream")
 
 # serial port args
-# parser.add_argument("-p", "--port", action="store", required=True, dest="port", default="/dev/ttyS0", help="Serial Port Device")
+parser.add_argument("-p", "--port", action="store", required=True, dest="port", default="/dev/ttyS0", help="Serial Port Device")
 parser.add_argument("-t", "--timeout", action="store", required=True, dest="timeout", default="0.5", help="Timeout to wait for events")
 
 
 #
 # Output Options
 #
-parser.add_argument("-c", "--csv", action="store", required=False, dest="csv", default=False, help="print every frame in csv, don't parse")
+parser.add_argument("-c", "--csv", action="store", required=False, dest="csv", default='False', help="print every frame in csv, don't parse")
 # mqtt publish...
 
 args = parser.parse_args()
@@ -143,7 +171,8 @@ Reader -> streamData --> MessageParser -> messages -> FrameParser -> frames -> O
 streamData = ObservableString()
 messages = ObservableArray()
 frames = ObservableArray()
-# payloads = ObservableArray()
+state = ObservableDict()
+
 
 if len(inFile) > 0:
     print(f'using {inFile} as source')
@@ -165,6 +194,10 @@ streamData.addObserver(messageParser)
 frameParser = FrameParser(frames)
 messages.addObserver(frameParser)
 
+state = ObservableDict()
+stateAggregator = stateAggregator(state)
+frames.addObserver(stateAggregator)
+
 if csv:
     output = CSVOutput()
     frames.addObserver(output)
@@ -175,8 +208,9 @@ def do_something():
     if not connection.isOpen():
         connection.open()
 
+    state.clear()
     streamData.append(connection.listen())
-
+    print(json.dumps(state.getDict()))
 
 def run():
     if not connection.isOpen():

@@ -6,12 +6,18 @@ While this project targets AWS IoT / Greengrass integration, the components shou
 
 * Current Status: Framework for capturing messages on the 485 bus and decoding payloads works. Payload decoders built for most common messages I see on my system 
 Useful for understanding and decoding live protocol or collecting traffic samples.
+* has a 'CSV' mode that can output the frame fields (see below) and the parsed payload
+* can read from file (reply test or cached or forwarded port -- also described below) or serial port
+* aggregates a 'state' by updating a dict so keys can come from multiple payloads
+* Uses an Observer/Obervable pipeline for flexible processing
 
 _TODO_
 1. Integrate latest AWS IoT Device SDK to publish messages to Greengrass (this will also facilitate debug)
 2. Migrate protocol decoding to Greengrass Lambdas
 3. Build coherent model for 'the pool' from collected messages and maintain model in Device Shadow
 4. Implement commands: SPA On, Pool On, All Off, Heat Pool, Heat Spa, Heat Off
+5. clean out crufty and unreacahble code
+6. refactor many classes to be more 'generic'
 
 ### Purpose
 

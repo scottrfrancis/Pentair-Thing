@@ -125,7 +125,7 @@ class StatusPayload(Payload):
             self.status['delay'] = self.body[12] & self.DELAY
 
             self.status['waterTemp'] = self.body[14] # repeated in body[15]
-            self.status['waterTemp2'] = self.body[15]
+            self.status['spaTemp'] = self.body[15]
             self.status['airTemp'] = self.body[18]
             self.status['solarTemp'] = self.body[19]
 
@@ -202,7 +202,7 @@ class TempPayload(Payload):
         try:
             # 8 unused bytes... probably solar and other features I don't have
             (self.status['waterTemp'],
-            self.status['waterTemp2'],
+            self.status['spaTemp'],
             self.status['airTemp'],
             self.status['poolSetTemp'],
             self.status['spaSetTemp']) = struct.unpack("bbbbbxxxxxxxx", self.body)
