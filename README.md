@@ -98,6 +98,7 @@ Some common addresses for DSTs and SRCs:
 | ---- | ------ |
 | 0F | broadcast?  that is... everyone should pay attention? |
 | 10 | controller -- could probably MOSTLY just use message FROM this addr |
+| 20 | 
 | 60 | pump | 
 
 Some common TYPEs and CMDs
@@ -126,3 +127,117 @@ The `status` member dicts will be aggregated (updated) -- creating a simple 'sta
 It can be handy to print various things as you debug the messages. There are some handy utilities to dump the payload as either the interpreted structure or the raw frame (formatted as hex). The exception block in `parseEvents()` is particularly useful as this will catch the 'unhandled' payloads.
 
 It can also be handy to dump every frame, modifying the format to be CSV, and redirecting that data to a file for analysis with Excel or whatever.
+
+### some observed messages
+
+```
+type,dest,src,code,len,payload,Comment
+24,0F,10,2,1D,0C 2E 20 00 00 00 00 00 00 20 00 00 20 86 53 53 00 00 66 00 00 00 00 00 00 CB A5 00 0D,look at 3rd byte - 20 - pool (20) is on
+```
+this was the first 'status' message of a capture run.  I used the remote to turn on the cleaner (sweep)  with this message
+
+```
+24,10,20,86,2,02 01,from handheld (20) to controller (10) - circuit change req AUX1 (02) to ON (01) -- turn cleaner on
+```
+it has been noted to me that if you try to spoof this command with src of 0x20, it may fail.  that may be because of the ack:
+```
+24,20,10,1,1,86,from Controller (10) to handheld (20) - ack (payload 86) ckt change request (code 01)
+```
+
+Also of note is that the interpretation of AUX1 as the sweep boost pump is likely specific to my installation.  I would expect there are some 'delay' flags in between these commands and the actual activation.  And may need to ramp up the main pump's RPM...
+
+
+
+
+
+and then got this status
+```
+24,0F,10,2,1D,0D 28 22 00 00 00 00 00 00 20 00 00 20 86 53 53 00 00 66 00 00 00 00 00 00 CB A5 00 0D,now in 3rd byte AUX 1 (02) is added to pool (20) being on -- sweep
+```
+Payload: `0D 28 22 00 00 00 00 00 00 20 00 00 20 86 53 53 00 00 66 00 00 00 00 00 00 CB A5 00 0D`
+
+Decoding it
+
+
+| BYTE | EXAMPLE | Value |
+| ---- | ------| ------ |
+| [0] | 0D | 24-hr time in hours  (0-23, decimal) - 0x0D = 13 or 1 PM |
+| [1] | 28 | Time in minutes      (0-59, decimal) - 0x28 = 40
+| [2] | 22 | Circuits that are on: |
+| | |     When SPA is on,          0x01 (2^0) bit is set |
+| | |     When AUX1 is on,         0x02 (2^1) bit is set |
+| | |     When AUX2 is on,         0x04 (2^2) bit is set |
+| | |     When AUX3 is on,         0x08 (2^3) bit is set |
+| | |     When POOL is on,         0x20 (2^5) bit is set |
+| | |     When FEATURE1 is on,     0x10 (2^4) bit is set |
+| | |     When FEATURE2 is on,     0x40 (2^6) bit is set |
+| | |     When FEATURE3 is on,     0x80 (2^7) bit is set |
+| | |     If SPA and POOL bits are both set, spa runs (not pool). |
+| | |           0x22 == AUX1 (sweepi) and 0x20 == POOL On |
+| [3] | 00 |  Additional circuits that are on: |
+| | |     When FEATURE4 is on,     0x01 (2^0) bit is set |
+| [4-8] | 00 00 00 00 00 | All zero (Additional circuit bitmasks on fancier controllers) |
+| [9] | 20 |  Mode mask: 0x01 - Run Mode (Normal/Service), 0x04 - Temp Unit (F/C), |
+| | |     0x08 - Freeze Protection (Off/On), 0x10 - Timeout (Off/On).  |
+| | |   0x20 == ??? -- dunno... seems to always be 20
+| [10] | 00 |  0x0f if heater is on; 0x03 if heater is off |
+| [11] | 00 | Zero |
+| [12] | 20 |  0x4 (2^2) bit indicates DELAY on AUX2 (and perhaps other circuits). |
+| | |     Bits 0x30 appears to be on all the time. Don’t know why. |
+| | | on my system.. this always seem to be 20 |
+| [13] | 86 | 0x08 (on 1.0 fw); 0x00 or 0x01 on 2.070 FW.; mine alwyas seems to be 0x86 |
+| [14] | 53 | POOL Water Temperature (degrees, only meaningful when circulating) - 0x53 == 86 deg F
+| | |   see Mode Mask - byte [9], bit mask 0x04... but maybe that's wrong |
+| [15] | |   SPA water temperature |
+| [16] | 00 |  0x01 on 1.0 FW; 0x02 of 2.070 FW. Major version number? -- 0x00 on my unit |
+| [17] | 00 | Zero on 1.0 FW 0x46 (= 70 decimal) on 2.070 FW. Minor version num? |
+| [18] | 66 | Air Temperature (degrees) -- 0x66 == 102 deg F, yes... it was hot |
+| [19] | 00 | Solar Temperature (degrees) -- 00 == i don't have solar |
+| [20] | 00 | Zero |
+| [21] | 00 | 0x32 (50 decimal) in 2.070 FW |
+| [22] | 00 | Heat setting:  |
+| | |     Low order 2 bits are pool: 0 off, 1 heater, 2 solar pref, 3 solar |
+| | |     Next 2 bits are spa: 0 off, 4 htr, 8 solar pref, 12 solar |
+| [23] | 00 | zero in 1.0 FW; 0x10 in 2.070 FW |
+| [24] | 00 | All zero |
+| [25] | CB | mystery |
+| [26] | A5 | no clue |
+| [27] | 00 | 0x19 / 0x38; 0x00 -- seems constant |
+| [28] | 0D | 0x0A; 0x0B on 2.070 FW; in these captures 0x0D |
+
+### Setup and Debugging
+
+This is very specific to my setup, but it's worth documenting. As noted, I'm using a Raspberry Pi Zero W wired to the IntelliTouch controller via 4-wire EIA-485 and a Seeed Studio Grove 485 adapter. I'm developing and debugging using VS Code on a Mac on the same WiFi network -- about 80 feet away. VS Code has some cool remote debugging facilities, but I'm forwarding the serial port over a socket to the mac and debugging locally.
+
+First, set up the 'listener' on the Mac with two windows or split panes in a iTerm2 session
+```
+# first session
+nc -l 3000 >dumpXX.raw
+```
+could also use a named pipe, but I wanted to save the raw for replay & debug.
+```
+# second session -- optional, but helps keep an eye on things
+tail -f dumpXX.raw | xxd -
+```
+
+That sets up the listener. Now set up the sender/forwarder on the Pi. I like to do it in 3 panes under tmux.
+```
+# first session
+mkfifo pool
+
+tail -f /dev/ttyS0 > pool
+```
+might also want to turn the terminal bell OFF in this session.
+```
+# second session
+
+xxd pool
+```
+Not strictly necessary, but I like to see the hex scroll by on both sides. Then forward the traffic.  Need to match port numbers, 3000 is just an example.
+```
+# third session
+
+cat pool | nc mini.local 3000
+```
+
+

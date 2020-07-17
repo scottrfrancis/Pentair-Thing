@@ -5,7 +5,6 @@ import re
 import struct
 
 
-RECORD_SEPARATOR = b'\xFF\x00\xFF'
 
 
 class Payload:
@@ -212,6 +211,7 @@ class TempPayload(Payload):
 
 
 class PentairProtocol:
+    RECORD_SEPARATOR = b'\xFF\x00\xFF'
     IDLE_BYTE = b'\xFF'
     START_BYTE = 0xA5
 
@@ -227,7 +227,8 @@ class PentairProtocol:
         }
 
         self.state = {}
- 
+
+
     #
     # validFrame
     #
@@ -245,6 +246,7 @@ class PentairProtocol:
     #
     def validFrame(self, f):
         try:
+            f = f.rstrip(self.IDLE_BYTE)
             valid = f[0] == self.START_BYTE and ((f[-2] << 8) + f[-1]) & 0xFFFF == reduce((lambda x, sum: sum + x), f[:-2])
             # valid = ((f[-2] << 8) + f[-1]) & 0xFFFF == reduce((lambda x, sum: sum + x), f[:-2], 0xA5)
             
@@ -260,6 +262,8 @@ class PentairProtocol:
     #   DOES NOT PARSE PAYLOAD or SPECIFIC MESSAGE CODES
     #
     def parseFrame(self, f):
+        f = f.rstrip(self.IDLE_BYTE)
+
         if not self.validFrame(f):
             return {}
 
@@ -280,26 +284,24 @@ class PentairProtocol:
     
 
     def parseEvents(self, events):
+        frames = []
         while events:
-            e = events[0].rstrip(self.IDLE_BYTE)
-            # print(e)
-
             if self.validFrame(e):
-                frame = self.parseFrame(e)
+                frames.append(self.parseFrame(e))
 
-                try:
-                    if frame['payloadLength'] != len(frame['payload']):
-                        raise Exception                         
+                # try:
+                #     if frame['payloadLength'] != len(frame['payload']):
+                #         raise Exception                         
 
-                    payload = self.payloads[frame['type']][frame['command']](frame['payload'])
-                    self.state.update(payload.getStatus())       # just overwrite ... and get the latest
-                    # payload.dump()
+                #     payload = self.payloads[frame['type']][frame['command']](frame['payload'])
+                #     self.state.update(payload.getStatus())       # just overwrite ... and get the latest
+                #     # payload.dump()
 
-                except Exception as err:
-                    # print(err)
-                    print(",".join(list(map((lambda x: f'{x:02X}' if not isinstance(x, Iterable) else ' '.join(f'{b:02X}' for b in x) if len(x) > 0  else ''), list(frame.values())))))
-                    pass
+                # except Exception as err:
+                #     # print(err)
+                #     print(",".join(list(map((lambda x: f'{x:02X}' if not isinstance(x, Iterable) else ' '.join(f'{b:02X}' for b in x) if len(x) > 0  else ''), list(frame.values())))))
+                #     pass
 
             events = events[1:]
 
-        return self.state
+        return frames
