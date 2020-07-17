@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 from collections.abc import Iterable
+from distutils.util import strtobool
 from FileReader import FileReader
 from Observer import *
 from PentairProtocol import PentairProtocol
@@ -74,6 +75,16 @@ class FrameParser(Observer):
         # for m in messages:
         #     self.frames.append(self.protocol.parseFrame(m))
 
+class PayloadParser(Observer):
+    def __init__(self, payloads):
+        super().__init__()
+        self.protocol = PentairProtocol()
+        
+        self.payloads = payloads
+
+    def update(self, frames):
+        self.payloads.append(list(map(self.protocol.parsePayload, frames)))
+
 class CSVOutput(Observer):
     def __init__(self):
         super().__init__()
@@ -81,8 +92,13 @@ class CSVOutput(Observer):
     def update(self, objects):
         for o in objects:
             if len(o) > 0:
-                print( ",".join(list(map((lambda x: f'{x:02X}' if not isinstance(x, Iterable) else ' '.join(f'{b:02X}' for b in x) if len(x) > 0  else ''), list(o.values())))) )
-
+                try:
+                    s = ''
+                    if 'state' in o:
+                        s = o.pop('state')
+                    print( ",".join(list(map((lambda x: f'{x:02X}' if not isinstance(x, Iterable) else ' '.join(f'{b:02X}' for b in x) if len(x) > 0  else ''), list(o.values())))) + "," + json.dumps(s) )
+                except Exception as err:
+                    print(err)
 
 
 # Configure logging
@@ -106,15 +122,17 @@ parser.add_argument("-i", "--inputfile", action="store", required=False, dest="i
 # parser.add_argument("-p", "--port", action="store", required=True, dest="port", default="/dev/ttyS0", help="Serial Port Device")
 parser.add_argument("-t", "--timeout", action="store", required=True, dest="timeout", default="0.5", help="Timeout to wait for events")
 
+
 #
 # Output Options
 #
-# parser.add_argument("-c", "--csv", action="store", required=False, dest="csv", default=False, help="print every frame in csv, don't parse")
+parser.add_argument("-c", "--csv", action="store", required=False, dest="csv", default=False, help="print every frame in csv, don't parse")
 # mqtt publish...
 
 args = parser.parse_args()
 inFile = args.inFile
 timeout = float(args.timeout)
+csv = strtobool(args.csv)
 
 
 '''
@@ -125,6 +143,7 @@ Reader -> streamData --> MessageParser -> messages -> FrameParser -> frames -> O
 streamData = ObservableString()
 messages = ObservableArray()
 frames = ObservableArray()
+# payloads = ObservableArray()
 
 if len(inFile) > 0:
     print(f'using {inFile} as source')
@@ -146,8 +165,9 @@ streamData.addObserver(messageParser)
 frameParser = FrameParser(frames)
 messages.addObserver(frameParser)
 
-output = CSVOutput()
-frames.addObserver(output)
+if csv:
+    output = CSVOutput()
+    frames.addObserver(output)
 
 
 

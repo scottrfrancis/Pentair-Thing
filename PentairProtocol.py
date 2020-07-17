@@ -25,6 +25,8 @@ class Payload:
 
 
     def getStatus(self):
+        # if len(self.status) > 0:
+        #     self.dump()
         return self.status
 
 #
@@ -146,7 +148,7 @@ class PumpPayload(Payload):
             self.status['pumpWatts'],
             self.status['pumpRPM'] ) = struct.unpack(">BBHH", self.body[1:9])
 
-            print(f"read RPM {self.status['pumpRPM']} from:"); self.dumpBody()
+            # print(f"read RPM {self.status['pumpRPM']} from:"); self.dumpBody()
 
             # there are a lot more bytes... seem to be sequence number...
         except Exception as err:
@@ -160,7 +162,6 @@ class PingPayload(Payload):
         try:
             if self.body[0] != 0xFF:
                 print(f'unkown ping data: {body[0]:02X}')
-        
         except Exception as err:
             pass
 
@@ -182,13 +183,13 @@ class PumpStatus(Payload):
 class CommandPayload(Payload):
     def __init__(self, body):
         super().__init__(body)
-        print("Command Payload")
+        # print("Command Payload")
         self.dumpBody()
 
         try:
-            (self.status['pumpRPM'],) = struct.unpack(">H", self.body[-2:])
-            print(f"read RPM {self.status['pumpRPM']} from:"); self.dumpBody()
-
+            # (self.status['pumpRPM'],) = struct.unpack(">H", self.body[-2:])
+            # print(f"read RPM {self.status['pumpRPM']} from:"); self.dumpBody()
+            pass
         except Exception as err:
             pass
 
@@ -217,9 +218,9 @@ class PentairProtocol:
 
     def __init__(self):
         self.payloads = {
-            0x00: { 0x01: CommandPayload,
-                    0x04: PingPayload,
-                    0x06: PumpStatus,
+            0x00: { #0x01: CommandPayload,
+                    #0x04: PingPayload,
+                    #0x06: PumpStatus,
                     0x07: PumpPayload },
             0x24: { 0x02: StatusPayload,
                     0x05: DatePayload,
@@ -256,6 +257,29 @@ class PentairProtocol:
         return valid
 
     #
+    #   parsePayloadFromFrame
+    #
+    def parsePayloadFromFrame(self, frame):
+        state = {}
+
+        try:
+            if frame['payloadLength'] != len(frame['payload']):
+                raise Exception                         
+
+            payload = self.payloads[frame['type']][frame['command']](frame['payload'])
+            # self.state.update(payload.getStatus())       # just overwrite ... and get the latest
+            state = payload.getStatus()
+            # payload.dump()
+
+        except Exception as err:
+            # print(err)
+        #     print(",".join(list(map((lambda x: f'{x:02X}' if not isinstance(x, Iterable) else ' '.join(f'{b:02X}' for b in x) if len(x) > 0  else ''), list(frame.values())))))
+            pass     
+
+        return state
+
+
+    #
     #   parseFrame
     #
     #   returns a dict with the parsed components of the frame 
@@ -277,6 +301,8 @@ class PentairProtocol:
             parsed['payloadLength'] = f[5]
             parsed['payload'] = f[6:-2]
 
+            parsed['state'] = self.parsePayloadFromFrame(parsed)
+
         except Exception as e:
             pass
 
@@ -289,18 +315,18 @@ class PentairProtocol:
             if self.validFrame(e):
                 frames.append(self.parseFrame(e))
 
-                # try:
-                #     if frame['payloadLength'] != len(frame['payload']):
-                #         raise Exception                         
+                try:
+                    if frame['payloadLength'] != len(frame['payload']):
+                        raise Exception                         
 
-                #     payload = self.payloads[frame['type']][frame['command']](frame['payload'])
-                #     self.state.update(payload.getStatus())       # just overwrite ... and get the latest
-                #     # payload.dump()
+                    payload = self.payloads[frame['type']][frame['command']](frame['payload'])
+                    # self.state.update(payload.getStatus())       # just overwrite ... and get the latest
+                    payload.dump()
 
-                # except Exception as err:
-                #     # print(err)
+                except Exception as err:
+                    print(err)
                 #     print(",".join(list(map((lambda x: f'{x:02X}' if not isinstance(x, Iterable) else ' '.join(f'{b:02X}' for b in x) if len(x) > 0  else ''), list(frame.values())))))
-                #     pass
+                    pass
 
             events = events[1:]
 

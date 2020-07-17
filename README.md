@@ -98,7 +98,7 @@ Some common addresses for DSTs and SRCs:
 | ---- | ------ |
 | 0F | broadcast?  that is... everyone should pay attention? |
 | 10 | controller -- could probably MOSTLY just use message FROM this addr |
-| 20 | 
+| 20 | wireless remote |
 | 60 | pump | 
 
 Some common TYPEs and CMDs
