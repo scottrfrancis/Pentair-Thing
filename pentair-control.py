@@ -208,9 +208,9 @@ def do_something():
     if not connection.isOpen():
         connection.open()
 
-    state.clear()
+    # state.clear()
     streamData.append(connection.listen())
-    logger.info(json.dumps(state.getDict()))
+    logger.info(json.dumps(state.getDict()) + "\n")
 
 def run():
     if not connection.isOpen():

@@ -35,13 +35,22 @@ class Payload:
 #
 
 class DatePayload(Payload):
+    DAY = { 0x01: "Sunday",
+            0x02: "Monday",
+            0x04: "Tuesday",
+            0x08: "Wednesday",
+            0x10: "Thursday",
+            0x20: "Friday",
+            0x40: "Saturday" }
+
     def __init__(self, body):
         super().__init__(body)
 
         try:
             self.status['hour'] = self.body[0]
             self.status['min'] = self.body[1]
-            self.status['dow'] = self.body[2]
+            # dow is a bit shift 0x01 << <ordinal DOW - Sun == 0, Sat == 6)
+            self.status['dow'] = self.DAY[self.body[2]]
             self.status['day'] = self.body[3]
             self.status['month'] = self.body[4]
             self.status['year'] = self.body[5]
@@ -71,13 +80,15 @@ class StatusPayload(Payload):
     TIMEOUT     = 0x10 # Timeout (Off/On)
 
     # byte 10
-    HEATER_ON  = 0x0F
+    #HEATER_ON  = 0x0F
+    HEATER_ON = 0x0C    # can't find this doc'd anywhere... but mine seems to be 0x0C
     # HEATER_OFF = 0x03 # seems to be wrong... off is off 0x00
 
     # byte 12
     DELAY = 0x04
 
     # byte 22 -- masks -- pool is low nibble, spa is high nibble (realy low 2 bits of high nibble)
+    # Actually... seems to be just low nibble... high 2 bits for spa, low 2 bits for pool
     HEATER_POOL_OFF     = 0x00  
     HEATER_POOL_EN      = 0x01
     HEATER_POOL_SOLAR_PREF = 0x02
@@ -122,22 +133,23 @@ class StatusPayload(Payload):
             
             # if (body[12] & 0x30) != 0x30:
             #     print(f'unusual byte 12 in StatusPayload {body[12]:02X}')
-            self.status['delay'] = self.body[12] & self.DELAY
+            self.status['delay'] = (self.body[12] & self.DELAY) != 0
 
             self.status['waterTemp'] = self.body[14] # repeated in body[15]
             self.status['spaTemp'] = self.body[15]
             self.status['airTemp'] = self.body[18]
             self.status['solarTemp'] = self.body[19]
 
-            self.status['poolHeaterMode'] = self.body[22] & 0x0F
-            self.status['spaHeaterMode'] = self.body[22] & 0xF0
+            self.status['poolHeaterMode'] = (self.body[22] & 0x03)
+            self.status['spaHeaterMode'] = ((self.body[22] & 0x0C) >> 2)
         
         except Exception as err:
             pass
 
 
 class PumpPayload(Payload):
-    # sample:  0A 02 02    03 03    09 60    00 00 00 00 00 01 00 0F
+    # sample:  
+    # 00,10,60,07,0F,0A 02 02 03 11 09 60 00 00 00 00 00 01 13 3B
     def __init__(self, body):
         super().__init__(body)
         try:
@@ -146,7 +158,7 @@ class PumpPayload(Payload):
             (self.status['pumpMode'],
             self.status['pumpState'],
             self.status['pumpWatts'],
-            self.status['pumpRPM'] ) = struct.unpack(">BBHH", self.body[1:9])
+            self.status['pumpRPM'] ) = struct.unpack(">BBHHxx", self.body[1:9])
 
             # print(f"read RPM {self.status['pumpRPM']} from:"); self.dumpBody()
 
