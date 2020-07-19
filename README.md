@@ -45,7 +45,7 @@ For this project, I have connected a Raspberry Pi Zero Wireless to the EasyTouch
 
 My house uses an [eero mesh wifi network](https://www.amazon.com/gp/product/B07WMLPSRL/ref=ppx_yo_dt_b_asin_title_o00_s00?ie=UTF8&psc=1) which provides good coverage for Pi, mounted near the controller.
 
-_NOTE_: It is necessary to enable the Serial port on the Pi and for the serial port to NOT be login shell.  This is accomplished with the `raspi-config` tool. No other special configuration of the Pi was needed beyond current (2020-05-29) version of Pi OS (or Raspbian or whatever they call it this week).
+_NOTE_: It is necessary to enable the Serial port on the Pi and for the serial port to NOT be login shell.  This is accomplished with the `raspi-config` tool. No other special configuration of the Pi was needed beyond current (2020-05-29) version of Pi OS (or Raspbian or whatever they call it this week). Details are in the [Raspberry Pi Documentation](https://www.raspberrypi.org/documentation/configuration/uart.md).
 
 ## the code
 
