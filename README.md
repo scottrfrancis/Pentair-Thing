@@ -43,6 +43,8 @@ Some people have been successful in creating interfaces for their own purposes a
 
 For this project, I have connected a Raspberry Pi Zero Wireless to the EasyTouch Controller over a 4-wire EIA-485 link. The controller seems to source enough power at 15V DC to power the Pi using a [buck converter](https://docs.google.com/document/d/1M0KMfXfvbszKeqzu6MUF_7yM6KDHk8cZ5nrH1_OUcAc/edit). The 'A' and 'B' signals are decoded with an [EIA-485 Transceiver Module](https://wiki.seeedstudio.com/Grove-RS485/) and routed to UART0 on the Pi. All the wiring is done on a [proto board](https://www.adafruit.com/product/571?gclid=Cj0KCQjwo6D4BRDgARIsAA6uN18kixfuLTQC-J3qJR--7Gl3GOsgvus298pjwGht9j0Ftrn9X5r5PccaApFrEALw_wcB) and a pi-standard 40-pin ribbon cable. All of this is mounted in an [IP66 Case](https://www.amazon.com/gp/product/B077QM9VM9/ref=ppx_yo_dt_b_asin_title_o03_s00?ie=UTF8&psc=1) and connected to the controller over standard sprinkler wire.
 
+![Hookup diagram](https://github.com/scottrfrancis/Pentair-Thing/raw/master/Pi%20Hookup_bb.png)
+
 My house uses an [eero mesh wifi network](https://www.amazon.com/gp/product/B07WMLPSRL/ref=ppx_yo_dt_b_asin_title_o00_s00?ie=UTF8&psc=1) which provides good coverage for Pi, mounted near the controller.
 
 _NOTE_: It is necessary to enable the Serial port on the Pi and for the serial port to NOT be login shell.  This is accomplished with the `raspi-config` tool. No other special configuration of the Pi was needed beyond current (2020-05-29) version of Pi OS (or Raspbian or whatever they call it this week). Details are in the [Raspberry Pi Documentation](https://www.raspberrypi.org/documentation/configuration/uart.md).
