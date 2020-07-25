@@ -12,6 +12,7 @@
 
 
 
+
 class Observer:
     def update(observable, arg):
         '''Called when observed object is modified, from list
@@ -45,5 +46,54 @@ class Observable:
         except Exception as err:
             pass
 
+
+# an observable chunk of raw data from the serial port, or a file, or ?
+class ObservableString(Observable):
+    def __init__(self):
+        super().__init__()
+        self.clear()
+
+    def clear(self):
+        self.chunk = b''
+
+    # call to add to the end of the chunk, notifies observers
+    def append(self, increment):
+        if len(increment) > 0:
+            self.chunk = self.chunk + increment
+
+            self.notifyObservers(self.chunk)
+            self.clear()
+
+# an Observaable wrapped array
+class ObservableArray(Observable):
+    def __init__(self):
+        super().__init__()
+        self.clear()
+
+    def clear(self):
+        self.elements = []
+
+    def append(self, newElements):
+        if len(newElements) > 0:
+            self.elements.extend(newElements)
+
+            self.notifyObservers(self.elements)
+            self.clear()
+
+# an Observable wrapped dict
+class ObservableDict(Observable):
+    def __init__(self):
+        super().__init__()
+        self.clear()
+
+    def clear(self):
+        self.dict = {}
+
+    def append(self, newDict):
+        if len(newDict) > 0:
+            self.dict.update(newDict)
+
+    def getDict(self):
+        return self.dict
 
     

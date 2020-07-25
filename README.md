@@ -23,6 +23,15 @@ _TODO_
 
 To facilitate monitoring and control of residential pool equipment using the Pentair EasyTouch controller
 
+#### Language, Requirements, Installation
+
+* Python 3.7 or later
+
+Use `pip3 install` for 
+* pyserial
+* AWSIoTPythonSDK
+
+
 ### Background / Context
 
 I have an EasyTouch controller, a Variable Speed Pump, a Booster pump for the sweep, a Jet pump for the spa, two controlled valves (to switch between pool and spa), and a gas Heater. The controller is mounted outside near the equipment, but I mostly interract with the equipment using the EasyTouch wireless remote. Equipment was installed around 2010, so there may be more modern versions. I don't have Solar heating, water features, or poly-chromic lighting--so the project won't have info about those systems, but should help someone discover the protocol for those.

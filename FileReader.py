@@ -4,13 +4,16 @@
 #   no size limiting, no chunking, very simple
 #
 
-class FileReader:
-    def __init__(self, file):
-        self.filename = file
-        self.readbuffer = ''
+from Connection import Connection
+
+
+class FileReader(Connection):
+    def __init__(self, filename):
+        super().__init__()
+        self.filename = filename
         self.file = None
 
-        self.open()
+        # self.open()
 
     def isOpen(self):
         return (self.file is not None)
