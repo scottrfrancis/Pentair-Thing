@@ -13,56 +13,6 @@ import logging
 import time
 
 
-# an observable chunk of raw data from the serial port, or a file, or ?
-class ObservableString(Observable):
-    def __init__(self):
-        super().__init__()
-        self.clear()
-
-    def clear(self):
-        self.chunk = b''
-
-    # call to add to the end of the chunk, notifies observers
-    def append(self, increment):
-        if len(increment) > 0:
-            self.chunk = self.chunk + increment
-
-            self.notifyObservers(self.chunk)
-            self.clear()
-
-# an Observaable wrapped array
-class ObservableArray(Observable):
-    def __init__(self):
-        super().__init__()
-        self.clear()
-
-    def clear(self):
-        self.elements = []
-
-    def append(self, newElements):
-        if len(newElements) > 0:
-            self.elements.extend(newElements)
-
-            self.notifyObservers(self.elements)
-            self.clear()
-
-# an Observable wrapped dict
-class ObservableDict(Observable):
-    def __init__(self):
-        super().__init__()
-        self.clear()
-
-    def clear(self):
-        self.dict = {}
-
-    def append(self, newDict):
-        if len(newDict) > 0:
-            self.dict.update(newDict)
-
-    def getDict(self):
-        return self.dict
-            
-
 # takes a stream on #update and writes it to the messages object, using messages#append
 class MessageParser(Observer):
     def __init__(self, separator, messages):
@@ -80,27 +30,15 @@ class MessageParser(Observer):
 
 # takes messsages and parses to frames
 class FrameParser(Observer):
-    def __init__(self, frames):
+    def __init__(self, frames, protocol):
         super().__init__()
-        self.protocol = PentairProtocol()
+        self.protocol = protocol
 
         self.frames = frames
 
     def update(self, messages):
         self.frames.append(list(map(self.protocol.parseFrame, messages)))
 
-        # for m in messages:
-        #     self.frames.append(self.protocol.parseFrame(m))
-
-class PayloadParser(Observer):
-    def __init__(self, payloads):
-        super().__init__()
-        self.protocol = PentairProtocol()
-        
-        self.payloads = payloads
-
-    def update(self, frames):
-        self.payloads.append(list(map(self.protocol.parsePayload, frames)))
 
 class stateAggregator(Observer):
     def __init__(self, state):
@@ -191,7 +129,8 @@ messageParser = MessageParser(PentairProtocol.RECORD_SEPARATOR, messages)
 # connect messageParser as an oberver of streamData
 streamData.addObserver(messageParser)
 
-frameParser = FrameParser(frames)
+protocol = PentairProtocol()
+frameParser = FrameParser(frames, protocol)
 messages.addObserver(frameParser)
 
 state = ObservableDict()
@@ -210,7 +149,9 @@ def do_something():
 
     # state.clear()
     streamData.append(connection.listen())
-    logger.info(json.dumps(state.getDict()) + "\n")
+    logger.info(json.dumps(state.getDict()))
+    logger.info(json.dumps(protocol.getStats()) + "\n")
+    protocol.resetStats()
 
 def run():
     if not connection.isOpen():
