@@ -93,6 +93,9 @@ class ObservableDict(Observable):
         if len(newDict) > 0:
             self.dict.update(newDict)
 
+            self.notifyObservers(self.dict)
+            
+
     def getDict(self):
         return self.dict
 

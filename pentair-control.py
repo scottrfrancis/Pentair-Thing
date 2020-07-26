@@ -2,6 +2,7 @@
 from collections.abc import Iterable
 from distutils.util import strtobool
 from FileReader import FileReader
+from GreengrassAwareConnection import *
 from Observer import *
 from PentairProtocol import PentairProtocol
 from SerialReader import SerialReader
@@ -40,7 +41,7 @@ class FrameParser(Observer):
         self.frames.append(list(map(self.protocol.parseFrame, messages)))
 
 
-class stateAggregator(Observer):
+class StateAggregator(Observer):
     def __init__(self, state):
         super().__init__()
         self.state = state
@@ -50,6 +51,21 @@ class stateAggregator(Observer):
             if 'state' in p:
                 self.state.append(p['state'])
 
+class MQTTPublisher(Observer):
+    def __init__(self, client, topic):
+        super().__init__()
+        self.client = client
+        self.topicBase = topic
+
+    def update(self, parsedFrames):
+        for p in parsedFrames:
+            try:
+                topic = self.topicBase + '/' + \
+                    "/".join((str(p['type']), str(p['destination']), str(p['source']), str(p['command'])))
+                message = " ".join(f'{b:02X}' for b in p['payload'])
+                self.client.publishMessageOnTopic(message, topic)
+            except KeyError as e:
+                pass
 
 class CSVOutput(Observer):
     def __init__(self):
@@ -78,6 +94,12 @@ logger.addHandler(streamHandler)
 # Read in command-line parameters
 parser = argparse.ArgumentParser()
 
+parser.add_argument("-e", "--endpoint", action="store", required=True, dest="host", help="Your AWS IoT custom endpoint")
+parser.add_argument("-r", "--rootCA", action="store", required=True, dest="rootCAPath", help="Root CA file path")
+parser.add_argument("-c", "--cert", action="store", dest="certificatePath", help="Certificate file path")
+parser.add_argument("-k", "--key", action="store", dest="privateKeyPath", help="Private key file path")
+parser.add_argument("-n", "--thingName", action="store", dest="thingName", default="Bot", help="Targeted thing name")
+
 #
 # Input Sources
 #
@@ -92,13 +114,19 @@ parser.add_argument("-t", "--timeout", action="store", required=True, dest="time
 #
 # Output Options
 #
-parser.add_argument("-c", "--csv", action="store", required=False, dest="csv", default='False', help="print every frame in csv, don't parse")
+parser.add_argument("--csv", action="store_true", help="print every frame in csv, append parsed")
 # mqtt publish...
 
 args = parser.parse_args()
+host = args.host
+rootCA = args.rootCAPath
+cert = args.certificatePath
+key = args.privateKeyPath
+thingName = args.thingName
+
 inFile = args.inFile
 timeout = float(args.timeout)
-csv = strtobool(args.csv)
+csv = args.csv
 
 
 '''
@@ -134,12 +162,22 @@ frameParser = FrameParser(frames, protocol)
 messages.addObserver(frameParser)
 
 state = ObservableDict()
-stateAggregator = stateAggregator(state)
+stateAggregator = StateAggregator(state)
 frames.addObserver(stateAggregator)
 
 if csv:
     output = CSVOutput()
     frames.addObserver(output)
+
+try:
+    iotConnection = GreengrassAwareConnection(host, rootCA, cert, key, thingName)
+
+    publisher = MQTTPublisher(iotConnection, thingName + "/raw")
+    frames.addObserver(publisher)
+except Exception as e:
+    logger.error(f'{str(type(e))} Error')
+
+
 
 
 
@@ -147,10 +185,15 @@ def do_something():
     if not connection.isOpen():
         connection.open()
 
-    # state.clear()
     streamData.append(connection.listen())
-    logger.info(json.dumps(state.getDict()))
-    logger.info(json.dumps(protocol.getStats()) + "\n")
+    stateMessage = json.dumps(state.getDict())
+    logger.info(stateMessage)
+    iotConnection.publishMessageOnTopic(stateMessage, thingName + '/t')
+
+    stats = json.dumps(protocol.getStats())
+    logger.info(stats + "\n")
+    iotConnection.publishMessageOnTopic(stats, thingName + '/s')
+    
     protocol.resetStats()
 
 def run():
