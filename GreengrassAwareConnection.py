@@ -32,7 +32,7 @@ def shadowDelete_callback(payload, responseStatus, token):
 
 class GreengrassAwareConnection:
     MAX_DISCOVERY_RETRIES = 10
-    GROUP_CA_PATH = "./groupCA"
+    GROUP_CA_PATH = "./groupCA/"
 
     def __init__(self, host, rootCA, cert, key, thingName):
         self.logger = logging.getLogger("GreengrassAwareConnection")
