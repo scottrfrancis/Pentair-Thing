@@ -13,13 +13,18 @@ import uuid
 
 from AWSIoTPythonSDK.core.greengrass.discovery.providers import DiscoveryInfoProvider
 from AWSIoTPythonSDK.core.protocol.connection.cores import ProgressiveBackOffCore
-from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
+# from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
 from AWSIoTPythonSDK.exception.AWSIoTExceptions import DiscoveryInvalidRequestException
-from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTShadowClient
+# from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTShadowClient
+
+from AWSIoTPythonSDK.MQTTLib import *
 
 
 def shadowUpdate_callback(payload, responseStatus, token):
-    print(json.dumps({'payload': payload, 'responseStatus': responseStatus, 'token':token}))
+    if responseStatus != 'accepted':
+        print(f"\n Update Status: {responseStatus}")
+        print(json.dumps(payload))
+        print("\n")
 
 def shadowDelete_callback(payload, responseStatus, token):
     print(json.dumps({'payload': payload, 'responseStatus': responseStatus, 'token':token}))
@@ -101,7 +106,7 @@ class GreengrassAwareConnection:
             except BaseException as e:
                 print("Error in discovery!")
                 print("Type: %s" % str(type(e)))
-                print("Error message: %s" % e.message)
+                # print("Error message: %s" % e.message)
                 retryCount -= 1
                 print("\n%d/%d retries left\n" % (retryCount, self.MAX_DISCOVERY_RETRIES))
                 print("Backing off...\n")
@@ -156,6 +161,9 @@ class GreengrassAwareConnection:
         self.shadowClient.configureAutoReconnectBackoffTime(1, 32, 20)
         self.shadowClient.configureConnectDisconnectTimeout(10)  # 10 sec
         self.shadowClient.configureMQTTOperationTimeout(5)  # 5 sec
+
+        self.shadowClient._AWSIoTMQTTClient.configureOfflinePublishQueueing(20, DROP_OLDEST)
+
 
         self.shadowClient.connect()
 

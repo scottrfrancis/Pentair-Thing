@@ -116,6 +116,7 @@ parser.add_argument("-t", "--timeout", action="store", required=True, dest="time
 #
 parser.add_argument("--csv", action="store_true", help="print every frame in csv, append parsed")
 # mqtt publish...
+parser.add_argument("--raw", action="store_true", help="publish raw payloads on parsed topics")
 
 args = parser.parse_args()
 host = args.host
@@ -172,23 +173,32 @@ if csv:
 try:
     iotConnection = GreengrassAwareConnection(host, rootCA, cert, key, thingName)
 
-    publisher = MQTTPublisher(iotConnection, thingName + "/raw")
-    frames.addObserver(publisher)
+    # iotConnection.deleteShadow()
 except Exception as e:
     logger.error(f'{str(type(e))} Error')
 
+if args.raw:
+    publisher = MQTTPublisher(iotConnection, thingName + "/raw")
+    frames.addObserver(publisher)
 
 
-
-
-def do_something():
+def do_something(last_update = {}):
     if not connection.isOpen():
         connection.open()
 
     streamData.append(connection.listen())
-    stateMessage = json.dumps(state.getDict())
-    logger.info(stateMessage)
-    iotConnection.publishMessageOnTopic(stateMessage, thingName + '/t')
+
+    accState = state.getDict()
+    for k in ['hour', 'min', 'dow', 'day', 'month', 'year', 'adjust', 'dst']:
+        if k in accState:
+            accState.pop(k)
+
+    if accState != last_update:
+        stateMessage = json.dumps(accState)
+        logger.info(stateMessage)
+        iotConnection.updateShadow(accState)
+        last_update = accState
+    # iotConnection.publishMessageOnTopic(stateMessage, thingName + '/t')
 
     stats = json.dumps(protocol.getStats())
     logger.info(stats + "\n")
@@ -196,13 +206,16 @@ def do_something():
     
     protocol.resetStats()
 
+    return last_update
+
 def run():
     if not connection.isOpen():
         connection.open()
 
+    last_update = {}
     while True:
         time.sleep(0.9*timeout)         # crude approach to timing adjustment
-        do_something()
+        last_update = do_something(last_update)
 
 if __name__ == "__main__":
 
