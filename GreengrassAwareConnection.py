@@ -6,6 +6,7 @@
 #   Based on v 1 of the Python SKD
 #
 
+import json
 import logging
 import os
 import uuid
@@ -14,7 +15,14 @@ from AWSIoTPythonSDK.core.greengrass.discovery.providers import DiscoveryInfoPro
 from AWSIoTPythonSDK.core.protocol.connection.cores import ProgressiveBackOffCore
 from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
 from AWSIoTPythonSDK.exception.AWSIoTExceptions import DiscoveryInvalidRequestException
+from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTShadowClient
 
+
+def shadowUpdate_callback(payload, responseStatus, token):
+    print(json.dumps({'payload': payload, 'responseStatus': responseStatus, 'token':token}))
+
+def shadowDelete_callback(payload, responseStatus, token):
+    print(json.dumps({'payload': payload, 'responseStatus': responseStatus, 'token':token}))
 
 
 class GreengrassAwareConnection:
@@ -42,6 +50,9 @@ class GreengrassAwareConnection:
 
         self.connected = False
         self.connect()
+
+        self.shadowConnected = False
+        self.connectShadow()
 
     def hasDiscovered(self):
         return self.discovered
@@ -92,9 +103,10 @@ class GreengrassAwareConnection:
                 print("Type: %s" % str(type(e)))
                 print("Error message: %s" % e.message)
                 retryCount -= 1
-                print("\n%d/%d retries left\n" % (retryCount, MAX_DISCOVERY_RETRIES))
+                print("\n%d/%d retries left\n" % (retryCount, self.MAX_DISCOVERY_RETRIES))
                 print("Backing off...\n")
                 self.backOffCore.backOff()
+
 
     def isConnected(self):
         return self.connected
@@ -116,6 +128,8 @@ class GreengrassAwareConnection:
                 self.client.connect()
                 self.connected = True
 
+                self.currentHost = currentHost
+                self.currentPort = currentPort
                 break
             except BaseException as e:
                 self.logger.warn("Error in Connect: Type: %s" % str(type(e)))
@@ -125,3 +139,45 @@ class GreengrassAwareConnection:
             raise ConnectionError()
 
         return self.client.publish(topic, message, qos)
+
+    def isShadowConnected(self):
+        return self.shadowConnected
+
+    def connectShadow(self):
+        if not self.isConnected():
+            self.logger.warn("connect regula client first to get host and port")
+            raise ConnectionError
+
+        self.shadowClient = AWSIoTMQTTShadowClient(self.thingName)
+        self.shadowClient.configureEndpoint(self.currentHost, self.currentPort)
+        self.shadowClient.configureCredentials(self.groupCA, self.key, self.cert)
+
+        # AWSIoTMQTTShadowClient configuration
+        self.shadowClient.configureAutoReconnectBackoffTime(1, 32, 20)
+        self.shadowClient.configureConnectDisconnectTimeout(10)  # 10 sec
+        self.shadowClient.configureMQTTOperationTimeout(5)  # 5 sec
+
+        self.shadowClient.connect()
+
+        # Create a deviceShadow with persistent subscription
+        self.deviceShadowHandler = self.shadowClient.createShadowHandlerWithName(self.thingName, True)
+
+        self.shadowConnected = True
+
+    
+    def updateShadow(self, update):
+        if not self.isShadowConnected():
+            raise ConnectionError
+
+        state = {'state': {
+                    'reported': update
+        }}
+        self.deviceShadowHandler.shadowUpdate(json.dumps(state), shadowUpdate_callback, 5)
+
+
+
+    def deleteShadow(self):
+        if not self.isShadowConnected():
+            raise ConnectionError
+
+        self.deviceShadowHandler.shadowDelete(shadowDelete_callback, 5)
