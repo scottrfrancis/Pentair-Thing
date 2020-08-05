@@ -47,6 +47,26 @@ class Observable:
             pass
 
 
+def mkObs(cls):
+    class Wrapper(cls):
+        def __init__(self, x=None):
+            print(f"init wrapper with {x}")
+            super().__init__(x)
+            # self.wrap = cls(x)
+            # print(f'wrap is {self.wrap}')
+            self.dirty = False
+
+        def __setitem__(self, key, item):
+            print(f'set item: {key}:{item}')
+            # self.wrap.__setitem__(key, item)
+            super().__setitem__(key, item)
+            self.dirty = True
+            print(f'{self.dirty}')
+            
+    return Wrapper
+
+
+
 # an observable chunk of raw data from the serial port, or a file, or ?
 class ObservableString(Observable):
     def __init__(self):

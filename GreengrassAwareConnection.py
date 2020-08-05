@@ -13,9 +13,7 @@ import uuid
 
 from AWSIoTPythonSDK.core.greengrass.discovery.providers import DiscoveryInfoProvider
 from AWSIoTPythonSDK.core.protocol.connection.cores import ProgressiveBackOffCore
-# from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
 from AWSIoTPythonSDK.exception.AWSIoTExceptions import DiscoveryInvalidRequestException
-# from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTShadowClient
 
 from AWSIoTPythonSDK.MQTTLib import *
 
@@ -33,6 +31,7 @@ def shadowDelete_callback(payload, responseStatus, token):
 class GreengrassAwareConnection:
     MAX_DISCOVERY_RETRIES = 10
     GROUP_CA_PATH = "./groupCA/"
+    OFFLINE_QUEUE_DEPTH = 100
 
     def __init__(self, host, rootCA, cert, key, thingName):
         self.logger = logging.getLogger("GreengrassAwareConnection")
@@ -162,8 +161,7 @@ class GreengrassAwareConnection:
         self.shadowClient.configureConnectDisconnectTimeout(10)  # 10 sec
         self.shadowClient.configureMQTTOperationTimeout(5)  # 5 sec
 
-        self.shadowClient._AWSIoTMQTTClient.configureOfflinePublishQueueing(20, DROP_OLDEST)
-
+        self.shadowClient._AWSIoTMQTTClient.configureOfflinePublishQueueing(self.OFFLINE_QUEUE_DEPTH, DROP_OLDEST)
 
         self.shadowClient.connect()
 
@@ -180,7 +178,7 @@ class GreengrassAwareConnection:
         state = {'state': {
                     'reported': update
         }}
-        self.deviceShadowHandler.shadowUpdate(json.dumps(state), shadowUpdate_callback, 5)
+        self.deviceShadowHandler.shadowUpdate(json.dumps(state), shadowUpdate_callback, 10)
 
 
 

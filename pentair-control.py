@@ -173,7 +173,7 @@ if csv:
 try:
     iotConnection = GreengrassAwareConnection(host, rootCA, cert, key, thingName)
 
-    # iotConnection.deleteShadow()
+    iotConnection.deleteShadow()
 except Exception as e:
     logger.error(f'{str(type(e))} Error')
 
@@ -182,7 +182,7 @@ if args.raw:
     frames.addObserver(publisher)
 
 
-def do_something(last_update = {}):
+def do_something():
     if not connection.isOpen():
         connection.open()
 
@@ -192,30 +192,47 @@ def do_something(last_update = {}):
     for k in ['hour', 'min', 'dow', 'day', 'month', 'year', 'adjust', 'dst']:
         if k in accState:
             accState.pop(k)
+    
+    # segregate immutable properties to a telemetry update
+    telemetry = {}
+    # for k in ['airTemp', 'solarTemp', 'spaTemp', 'tempUnits', 'timeout', 'waterTemp', 'pumpRPM', 'pumpWatts']:
+    #     if k in accState:
+    #         telemetry[k] = accState.pop(k)
 
-    if accState != last_update:
-        stateMessage = json.dumps(accState)
-        logger.info(stateMessage)
-        iotConnection.updateShadow(accState)
-        last_update = accState
-    # iotConnection.publishMessageOnTopic(stateMessage, thingName + '/t')
+    if len(accState) > 0:
+        try:
+            stateMessage = json.dumps(accState)
+            logger.info(stateMessage)
+            iotConnection.updateShadow(accState)
+        except Exception as e:
+            logger.warn("Exception updating Shadow " + e)
+
+    if len(telemetry) > 0:
+        try:
+            telemetryMessage = json.dumps(telemetry)
+            logger.info(telemetryMessage)
+            iotConnection.publishMessageOnTopic(telemetryMessage, thingName + '/t')
+        except Exception as e:
+            logger.warn("Exception sending telemetry " + e)
 
     stats = json.dumps(protocol.getStats())
-    logger.info(stats + "\n")
-    iotConnection.publishMessageOnTopic(stats, thingName + '/s')
-    
+    if len(stats) > 0:
+        try:
+            logger.info(stats + "\n")
+            iotConnection.publishMessageOnTopic(stats, thingName + '/s')
+        except Exception as e:
+            logger.warn("Exception sending stats " + e)
+
     protocol.resetStats()
 
-    return last_update
 
 def run():
     if not connection.isOpen():
         connection.open()
 
-    last_update = {}
     while True:
-        time.sleep(0.9*timeout)         # crude approach to timing adjustment
-        last_update = do_something(last_update)
+        time.sleep(timeout)         # crude approach to timing adjustment
+        do_something()
 
 if __name__ == "__main__":
 
