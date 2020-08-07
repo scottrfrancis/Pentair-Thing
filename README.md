@@ -129,9 +129,11 @@ Some common TYPEs and CMDs
 | 00 | 04 | seems to be some kind of heartbeat or ping from the controller to a device (usually the pump - 60) and then a matching response |
 | 00 | 06 | pump status -- is it running/started (0A) or stopped (04) |
 | 00 | 07 | pump data -- started, mode, watts, rpm, etc. |
+| 24 | 01 | ack for a previous command, usually one byte of payload with the command being ack'd |
 | 24 | 02 | status -- the motherload of info... time, date, temps, lots of stuff |
 | 24 | 05 | date -- current controller date, happens every 2s or so |
 | 24 | 08 | temps -- air, water, preferred, solar, other temperatures |
+| 24 | 88 | set heat -- sets thermostat temps and mode for spa and pool |
 
 Seems like device 10 is the only one sending TYPE 24s.  These may be the main informational messages. The TYPE 00 messages seem to occur in pairs SRC -> DST then a complementary 'ACK' messages from DST -> SRC.
 
