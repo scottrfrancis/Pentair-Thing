@@ -147,6 +147,15 @@ class GreengrassAwareConnection:
     def isShadowConnected(self):
         return self.shadowConnected
 
+    def memberDeltaHandler(self, payload, responseStatus, token):
+        print("\nReceived a Delta Message")
+
+        payloadDict = json.loads(payload)
+        deltaMessage = json.dumps(payloadDict["state"])
+        print(deltaMessage + "\n")
+
+
+
     def connectShadow(self):
         if not self.isConnected():
             self.logger.warn("connect regula client first to get host and port")
@@ -167,6 +176,8 @@ class GreengrassAwareConnection:
 
         # Create a deviceShadow with persistent subscription
         self.deviceShadowHandler = self.shadowClient.createShadowHandlerWithName(self.thingName, True)
+
+        self.deviceShadowHandler.shadowRegisterDeltaCallback(self.memberDeltaHandler)
 
         self.shadowConnected = True
 

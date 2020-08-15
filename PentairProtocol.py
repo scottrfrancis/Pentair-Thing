@@ -222,6 +222,63 @@ class TempPayload(Payload):
         except Exception as err:
             pass
 
+#
+# A Command
+#
+class Command:
+    def __init__(self, dst, cmd, type=0x24, src=0x21):
+        pass
+
+# 0x86 - Turn Circuits On and Off 
+#
+# example:
+#   24	10	20	86	2	06 01
+#
+# will be followed with a ACK from the dest
+#
+class CircuitChangeCommand(Command):
+    SPA = 1
+    AUX1 = 2
+    AUX2 = 3
+    AUX3 = 4
+    FEATURE1 = 5
+    POOL = 6
+    FEATURE2 = 7
+    FEATURE3 = 8
+    FEATURE4 = 9
+    HEAT_BOOST = 0x85
+
+    def __init__(self, ckt, onOff, dst=0x10):
+        super().__init__(dst, 0x86)
+
+        state = b'\x01' if onOff else b'\x00'
+
+        self.payload =  ckt.to_bytes(1, byteorder='big') + state
+        pass
+
+# 0x88 - Change heating parameters -- set points, enable
+#
+# example:
+#   24	10	20	88	4	52 64 05 00
+#
+class HeatChangeCommand(Command):
+    # modes
+    OFF = 0x00
+    HEATER = 0x01
+    SOLAR = 0x02
+    SOLAR_PREF = 0x03
+
+    def __init__(self, poolSet, spaSet, spaMode, poolMode, dst=0x10):
+        super().__init__(dst, 0x88)
+
+        mode = (spaMode << 2) | poolMode
+
+        self.payload =  poolSet.to_bytes(1, byteorder='big') + \
+                        spaSet.to_bytes(1, byteorder='big') + \
+                        mode.to_bytes(1, byteorder='big') + \
+                        b'\x00'
+        pass
+
 
 class PentairProtocol:
     RECORD_SEPARATOR = b'\xFF\x00\xFF'
@@ -230,7 +287,7 @@ class PentairProtocol:
 
     def __init__(self):
         self.payloads = {
-            0x00: { #0x01: CommandPayload,
+            0x00: { #0x01: CommandPayload,  # this is really an ACKnowledgement of the cmd in the payload
                     #0x04: PingPayload,
                     #0x06: PumpStatus,
                     0x07: PumpPayload },
