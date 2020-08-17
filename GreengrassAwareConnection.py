@@ -33,7 +33,7 @@ class GreengrassAwareConnection:
     GROUP_CA_PATH = "./groupCA/"
     OFFLINE_QUEUE_DEPTH = 100
 
-    def __init__(self, host, rootCA, cert, key, thingName):
+    def __init__(self, host, rootCA, cert, key, thingName, stateChangeQueue = None):
         self.logger = logging.getLogger("GreengrassAwareConnection")
         self.logger.setLevel(logging.DEBUG)
         streamHandler = logging.StreamHandler()
@@ -46,6 +46,8 @@ class GreengrassAwareConnection:
         self.cert = cert
         self.key = key
         self.thingName = thingName
+
+        self.stateChangeQueue = stateChangeQueue
 
         self.backOffCore = ProgressiveBackOffCore()
 
@@ -151,8 +153,12 @@ class GreengrassAwareConnection:
         print("\nReceived a Delta Message")
 
         payloadDict = json.loads(payload)
-        deltaMessage = json.dumps(payloadDict["state"])
+        state = payloadDict['state']
+        deltaMessage = json.dumps(deltaMessage)
         print(deltaMessage + "\n")
+
+        if self.stateChangeQueue != None:
+            self.stateChangeQueue.append(state)
 
 
 

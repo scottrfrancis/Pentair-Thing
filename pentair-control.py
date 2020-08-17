@@ -140,6 +140,8 @@ messages = ObservableArray()
 frames = ObservableArray()
 state = ObservableDict()
 
+deltas = ObservableArray()
+
 
 if len(inFile) > 0:
     print(f'using {inFile} as source')
@@ -171,7 +173,7 @@ if csv:
     frames.addObserver(output)
 
 try:
-    iotConnection = GreengrassAwareConnection(host, rootCA, cert, key, thingName)
+    iotConnection = GreengrassAwareConnection(host, rootCA, cert, key, thingName, deltas)
 
     iotConnection.deleteShadow()
 except Exception as e:
