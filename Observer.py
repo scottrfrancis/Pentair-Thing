@@ -100,6 +100,25 @@ class ObservableArray(Observable):
             self.notifyObservers(self.elements)
             self.clear()
 
+# ObservableArray is 'flat' in that it will be extended with the new elements.
+# sometimes you want to append a deep object to the array... 
+#
+#   use ObservableDeepArray for that
+class ObservableDeepArray(Observable):
+    def __init__(self):
+        super().__init__()
+        self.clear()
+
+    def clear(self):
+        self.elements = []
+
+    def append(self, newItem):
+        if len(newItem) > 0:
+            self.elements.append(newItem)
+
+            self.notifyObservers(self.elements)
+            self.clear()
+
 # an Observable wrapped dict
 class ObservableDict(Observable):
     def __init__(self):

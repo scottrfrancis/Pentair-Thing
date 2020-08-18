@@ -82,6 +82,29 @@ class CSVOutput(Observer):
                 except Exception as err:
                     print(err)
 
+class DeltaCommandProcessor(Observer):
+    def __init__(self, commands, protocol):
+        super().__init__()
+        self.commands = commands
+        self.protocol = protocol
+
+    def update(self, updateList):
+       for u in updateList:
+           if len(u) > 0:
+            #    try:
+            self.commands.append(self.protocol.createCommand(u))
+            
+class CommandFramer(Observer):
+    def __init__(self, frames, protocol):
+        super().__init__()
+        self.frames = frames
+        self.protocol = protocol
+
+    def update(self, commands):
+        for c in commands:
+            if len(c) > 0:
+                self.frames.append(self.protocol.createFrame(c))
+
 
 # Configure logging
 logger = logging.getLogger("Pentair-Thing.core")
@@ -140,7 +163,6 @@ messages = ObservableArray()
 frames = ObservableArray()
 state = ObservableDict()
 
-deltas = ObservableArray()
 
 
 if len(inFile) > 0:
@@ -171,6 +193,32 @@ frames.addObserver(stateAggregator)
 if csv:
     output = CSVOutput()
     frames.addObserver(output)
+
+
+'''
+Outut Chain
+
+delta updates come in to callback in GGAwareConnex..., which will append the `state` dict to the
+deltas array. 
+
+DeltaCommandProcessor gets these deltas and calls Protocol to create a command and appends commands
+to the commands array.
+
+Then call the Protocol again to frame the commands.
+
+A writer Observer of that array will send the frames to the Serial Port and/or file.
+'''
+deltas = ObservableDeepArray()
+commands = ObservableDeepArray()
+commandStreams = ObservableArray()
+
+deltaCommandProcessor = DeltaCommandProcessor(commands, protocol)
+deltas.addObserver(deltaCommandProcessor)
+
+commandFramer = CommandFramer(commandStreams, protocol)
+commands.addObserver(commandFramer)
+
+
 
 try:
     iotConnection = GreengrassAwareConnection(host, rootCA, cert, key, thingName, deltas)

@@ -150,12 +150,8 @@ class GreengrassAwareConnection:
         return self.shadowConnected
 
     def memberDeltaHandler(self, payload, responseStatus, token):
-        print("\nReceived a Delta Message")
-
         payloadDict = json.loads(payload)
         state = payloadDict['state']
-        deltaMessage = json.dumps(deltaMessage)
-        print(deltaMessage + "\n")
 
         if self.stateChangeQueue != None:
             self.stateChangeQueue.append(state)

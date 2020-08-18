@@ -133,9 +133,10 @@ Some common TYPEs and CMDs
 | 24 | 02 | status -- the motherload of info... time, date, temps, lots of stuff |
 | 24 | 05 | date -- current controller date, happens every 2s or so |
 | 24 | 08 | temps -- air, water, preferred, solar, other temperatures |
+| 24 | 86 | circuit change -- turn enum'd circuits (pumps, etc) on/off |
 | 24 | 88 | set heat -- sets thermostat temps and mode for spa and pool |
 
-Seems like device 10 is the only one sending TYPE 24s.  These may be the main informational messages. The TYPE 00 messages seem to occur in pairs SRC -> DST then a complementary 'ACK' messages from DST -> SRC.
+Device $10 is the main one sending TYPE 24s, but any control device (such as the remote, $20) can probably send them. These may be the main informational messages. The TYPE 00 messages seem to occur in pairs SRC -> DST then a complementary 'ACK' messages from DST -> SRC.
 
 ### Interpreting Payloads
 A Simple, polymorphic class structure is implemented where specific payloads are intpreted based on TYPE and CMD. To add new interpreters:
@@ -262,5 +263,3 @@ Not strictly necessary, but I like to see the hex scroll by on both sides. Then 
 
 cat pool | nc mini.local 3000
 ```
-
-

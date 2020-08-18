@@ -226,8 +226,27 @@ class TempPayload(Payload):
 # A Command
 #
 class Command:
-    def __init__(self, dst, cmd, type=0x24, src=0x21):
-        pass
+    def __init__(self, dst, cmd, commandType=0x24, src=0x21):
+        self.type = commandType
+        self.destination = dst
+        self.source = src
+        self.command = cmd
+
+        self.payload = b''
+
+    def getParsedCommand(self):
+        parsed = {}
+        parsed['type'] = self.type
+        parsed['destination'] = self.destination
+        parsed['source'] = self.source
+        parsed['command'] = self.command
+
+        parsed['payloadLength'] = len(self.payload)
+        parsed['payload'] = self.payload
+
+        # parsed['state'] = self.parsePayloadFromFrame(parsed)
+
+        return parsed
 
 # 0x86 - Turn Circuits On and Off 
 #
@@ -237,24 +256,29 @@ class Command:
 # will be followed with a ACK from the dest
 #
 class CircuitChangeCommand(Command):
-    SPA = 1
-    AUX1 = 2
-    AUX2 = 3
-    AUX3 = 4
-    FEATURE1 = 5
-    POOL = 6
-    FEATURE2 = 7
-    FEATURE3 = 8
-    FEATURE4 = 9
-    HEAT_BOOST = 0x85
+    CKT_SELECTORS = {
+        'spa': 0x01, 
+        'aux1': 0x02, 
+        'aux2': 0x03, 
+        'aux3': 0x04, 
+        'feature1': 0x05,         
+        'pool': 0x06, 
+        'feature2': 0x07, 
+        'feature3': 0x08, 
+        'feature4': 0x09,
+        'HEAT_BOOST': 0x85
+    }
 
     def __init__(self, ckt, onOff, dst=0x10):
         super().__init__(dst, 0x86)
 
-        state = b'\x01' if onOff else b'\x00'
+        try:
+            circuit = self.CKT_SELECTORS[ckt].to_bytes(1, 'big')
+            state = b'\x01' if onOff else b'\x00'
 
-        self.payload =  ckt.to_bytes(1, byteorder='big') + state
-        pass
+            self.payload = circuit + state
+        except Exception as e:
+            pass
 
 # 0x88 - Change heating parameters -- set points, enable
 #
@@ -296,6 +320,30 @@ class PentairProtocol:
                     0x08: TempPayload }
         }
 
+        self.commandPayloads = {
+            'spa': CircuitChangeCommand, 
+            'aux1': CircuitChangeCommand, 
+            'aux2': CircuitChangeCommand, 
+            'aux3': CircuitChangeCommand, 
+            'pool': CircuitChangeCommand, 
+            'feature1': CircuitChangeCommand, 
+            'feature2': CircuitChangeCommand, 
+            'feature3': CircuitChangeCommand, 
+            'feature4': CircuitChangeCommand
+        }
+            # 'CircuitChanges': {
+            #     'command': CircuitChangeCommand,
+            #     'selectors': [ "spa", "aux1", "aux2", "aux3", "pool", "feature1", "feature2", "feature3", "feature4" ]
+            # },
+            # 'HeatChanges': {
+            #     'command': HeatChangeCommand,
+            #     'selectors': [ "poolSetTemp", "spaSetTemp", "poolHeaterMode", "spaHeaterMode" ]
+            # }
+
+        # "airTemp", "solarTemp", "runMode","tempUnits", "freezeProtect", "timeout", "heater", "delay"
+        # "pumpStarted","pumpMode", "pumpState", "pumpWatts", "pumpRPM", "waterTemp", "spaTemp"
+
+
         self.resetStats()
 
     def getStats(self):
@@ -305,6 +353,13 @@ class PentairProtocol:
         self.stats= {   'frameCount': 0,
                         'badFrames': 0,
                         'unprocessedPayloads': 0 }
+
+    # computes checksum for a frame 
+    #   if using an incoming frame, strip off the checksum before calling -- e..g f[:-2]
+    # otherwise, frame should include the START_BYTE and otherwise be stripped from IDLE_BYTES
+    def checkSum(self, frame):
+        cs = reduce((lambda x, sum: sum + x), frame)
+        return cs
 
     #
     # validFrame
@@ -324,7 +379,8 @@ class PentairProtocol:
     def validFrame(self, f):
         try:
             f = f.rstrip(self.IDLE_BYTE)
-            valid = f[0] == self.START_BYTE and ((f[-2] << 8) + f[-1]) & 0xFFFF == reduce((lambda x, sum: sum + x), f[:-2])
+            # valid = f[0] == self.START_BYTE and ((f[-2] << 8) + f[-1]) & 0xFFFF == reduce((lambda x, sum: sum + x), f[:-2])
+            valid = f[0] == self.START_BYTE and ((f[-2] << 8) + f[-1]) & 0xFFFF == self.checkSum(f[:-2])
             
             # increment badFrame counter for checksum errors ONLY... not for 'empty' frames
             self.stats['badFrames'] += not valid
@@ -385,4 +441,44 @@ class PentairProtocol:
             pass
 
         return parsed
+
+    # commands are dicts with fields separated out -- just as if parsed
+    def createCommand(self, desiredState):
+        cmd = {}
+        print("creating Command for " + json.dumps(desiredState))
+
+        try:
+            k = list(desiredState.keys())[0]
+            command = self.commandPayloads[k](k, desiredState[k])
+
+            cmd = command.getParsedCommand()
+
+        except Exception as e:
+            pass
+
+
+        return cmd
+
+    def createFrame(self, command):
+        frame = self.START_BYTE
+        print("creating frame from " ) #+ json.dumps(command))
+
+        try:
+            frame  = b''.join(list(map( lambda x: x.to_bytes(1, 'big'),[    
+                self.START_BYTE,           
+                command['type'],
+                command['destination'],
+                command['source'],
+                command['command'],
+                command['payloadLength']
+            ] ))) + command['payload'] # payload is already serialized
+
+            check = self.checkSum(frame)
+
+            frame = self.RECORD_SEPARATOR + frame + check.to_bytes(2, 'big') + self.RECORD_SEPARATOR
+        
+        except Exception as e:
+            pass
+
+        return frame
 
