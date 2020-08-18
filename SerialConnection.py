@@ -2,10 +2,10 @@
 # For details on pentair protocol
 #
 import serial
-from Connection import Connection
+from Connection import Connection, IOConnection
 
 
-class SerialReader(Connection):
+class SerialConnection(IOConnection):
     def __init__(self, device):
         super().__init__()
         self.device = device
@@ -23,9 +23,9 @@ class SerialReader(Connection):
     def isOpen(self):
         return self.ser.isOpen()
 
-    def send(self, commands):
-        self.ser.write((self.RECORD_SEPARATOR.join(
-            commands) + self.RECORD_SEPARATOR).encode())
+    def send(self, message):
+        count = self.ser.write(message)
+        return count
 
     def listen(self):
         # events = []

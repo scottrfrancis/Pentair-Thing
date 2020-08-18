@@ -445,7 +445,6 @@ class PentairProtocol:
     # commands are dicts with fields separated out -- just as if parsed
     def createCommand(self, desiredState):
         cmd = {}
-        print("creating Command for " + json.dumps(desiredState))
 
         try:
             k = list(desiredState.keys())[0]
@@ -456,12 +455,10 @@ class PentairProtocol:
         except Exception as e:
             pass
 
-
         return cmd
 
     def createFrame(self, command):
-        frame = self.START_BYTE
-        print("creating frame from " ) #+ json.dumps(command))
+        frame = self.RECORD_SEPARATOR + self.START_BYTE + self.RECORD_SEPARATOR
 
         try:
             frame  = b''.join(list(map( lambda x: x.to_bytes(1, 'big'),[    

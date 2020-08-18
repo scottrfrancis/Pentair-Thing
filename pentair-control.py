@@ -5,7 +5,7 @@ from FileReader import FileReader
 from GreengrassAwareConnection import *
 from Observer import *
 from PentairProtocol import PentairProtocol
-from SerialReader import SerialReader
+from SerialConnection import SerialConnection
 
 import argparse
 from datetime import datetime
@@ -105,6 +105,17 @@ class CommandFramer(Observer):
             if len(c) > 0:
                 self.frames.append(self.protocol.createFrame(c))
 
+class OutputWriter(Observer):
+    def __init__(self, connection):
+        super().__init__()
+        self.connection = connection
+
+    def update(self, messages):
+        if len(messages) > 0:
+            self.connection.send(messages)
+            # force a state update -- needs a refactor
+            streamData.append(connection.listen())
+
 
 # Configure logging
 logger = logging.getLogger("Pentair-Thing.core")
@@ -165,13 +176,15 @@ state = ObservableDict()
 
 
 
+outputConnection = None
 if len(inFile) > 0:
     print(f'using {inFile} as source')
     connection = FileReader(inFile)
 else:
     port = args.port
     print(f'using {port} as source')
-    connection = SerialReader(port)
+    connection = SerialConnection(port)
+    outputConnection = connection
 
     timeout = float(args.timeout)
 # connection will read from either sourcse
@@ -210,7 +223,7 @@ A writer Observer of that array will send the frames to the Serial Port and/or f
 '''
 deltas = ObservableDeepArray()
 commands = ObservableDeepArray()
-commandStreams = ObservableArray()
+commandStreams = ObservableString()
 
 deltaCommandProcessor = DeltaCommandProcessor(commands, protocol)
 deltas.addObserver(deltaCommandProcessor)
@@ -218,6 +231,8 @@ deltas.addObserver(deltaCommandProcessor)
 commandFramer = CommandFramer(commandStreams, protocol)
 commands.addObserver(commandFramer)
 
+outputWriter = OutputWriter(outputConnection)
+commandStreams.addObserver(outputWriter)
 
 
 try:

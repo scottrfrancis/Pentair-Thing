@@ -10,10 +10,14 @@ class Connection:
         # self.open()
 
     def open(self):
-        print('YOU MUST OVERRIDE THIS METHOD')
+        pass
     
     def isOpen(self):
-        print('YOU MUST OVERRIDE THIS METHOD')
+        pass
 
     def listen(self):
-        print('YOU MUST OVERRIDE THIS METHOD')
+        pass
+
+class IOConnection(Connection):
+    def send(self, message):
+        pass
