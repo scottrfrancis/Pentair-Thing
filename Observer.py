@@ -44,7 +44,7 @@ class Observable:
             for o in observers:
                 o.update(arg)
         except Exception as err:
-            pass
+            print(f'error notifying observers: {err}')
 
 
 def mkObs(cls):

@@ -15,6 +15,9 @@ class FileReader(Connection):
 
         # self.open()
 
+    def __del__(self):  
+        self.close()      
+
     def isOpen(self):
         return (self.file is not None)
 
@@ -24,6 +27,11 @@ class FileReader(Connection):
         except Exception as err:
             print(f'error opening {self.filename}: {err}')
 
+    def close(self):   
+        if self.file is not None:
+            self.file.close()
+            self.file = None
+
     def listen(self):
         try:
             self.readbuffer = self.file.read() 
@@ -31,3 +39,6 @@ class FileReader(Connection):
             print("Exception " + e + " while reading from file")
 
         return self.readbuffer
+
+
+  

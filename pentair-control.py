@@ -2,7 +2,7 @@
 from collections.abc import Iterable
 from distutils.util import strtobool
 from FileReader import FileReader
-from GreengrassAwareConnection import *
+# from GreengrassAwareConnection import *
 from Observer import *
 from PentairProtocol import PentairProtocol
 from SerialConnection import SerialConnection

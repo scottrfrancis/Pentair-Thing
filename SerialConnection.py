@@ -16,6 +16,15 @@ class SerialConnection(IOConnection):
             stopbits=serial.STOPBITS_ONE,
             bytesize=serial.EIGHTBITS, timeout=0.1, write_timeout=0.1
         )
+    
+    def __del__(self):
+        self.ser.flush()
+        self.ser.flushInput()
+        self.ser.flushOutput()
+        self.ser.reset_input_buffer()
+        self.ser.reset_output_buffer()
+        
+        self.ser.close()
 
     def open(self):
         self.ser.open()

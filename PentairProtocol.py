@@ -57,8 +57,9 @@ class DatePayload(Payload):
             self.status['adjust'] = self.body[6]
             self.status['dst'] = self.body[7]
         except Exception as err:
-            pass
-
+            # log error
+            print(f'error in DatePayload: {err}')
+        
 
 class StatusPayload(Payload):
     # circuit bit-masks for byte 2
@@ -144,8 +145,8 @@ class StatusPayload(Payload):
             self.status['spaHeaterMode'] = ((self.body[22] & 0x0C) >> 2)
         
         except Exception as err:
-            pass
-
+            print(f'error in StatusPayload: {err}')
+        
 
 class PumpPayload(Payload):
     # sample:  
@@ -164,8 +165,9 @@ class PumpPayload(Payload):
 
             # there are a lot more bytes... seem to be sequence number...
         except Exception as err:
-            pass
-
+            # log error
+            print(f'error in PumpPayload: {err}')
+            
 
 class PingPayload(Payload):
     # think this is just a ping to see if the other party is alive
@@ -175,7 +177,7 @@ class PingPayload(Payload):
             if self.body[0] != 0xFF:
                 print(f'unkown ping data: {body[0]:02X}')
         except Exception as err:
-            pass
+            print(f'error in PingPayload: {err}')
 
     def dump(self):
         pass
@@ -190,8 +192,9 @@ class PumpStatus(Payload):
         try:
             self.status['pumpStarted'] = (self.body[0] & 0x0A) != 0
         except Exception as err:
-            pass
-
+            # log error
+            print(f'error in PumpStatus: {err}')
+            
 class CommandPayload(Payload):
     def __init__(self, body):
         super().__init__(body)
@@ -203,8 +206,8 @@ class CommandPayload(Payload):
             # print(f"read RPM {self.status['pumpRPM']} from:"); self.dumpBody()
             pass
         except Exception as err:
-            pass
-
+            print(f'error in CommandPayload: {err}')
+            
 # 24,0F,10,08,0D,4C 4C 3D 55 64 00 00 00 00 00 00 00 00
 # temperatures: water water air water-set spa-set
 class TempPayload(Payload):
@@ -220,7 +223,7 @@ class TempPayload(Payload):
             self.status['spaSetTemp']) = struct.unpack("bbbbbxxxxxxxx", self.body)
 
         except Exception as err:
-            pass
+            print(f'error in TempPayload: {err}')
 
 #
 # A Command
@@ -278,8 +281,8 @@ class CircuitChangeCommand(Command):
 
             self.payload = circuit + state
         except Exception as e:
-            pass
-
+            print(f'error in CircuitChangeCommand: {e}')
+            
 # 0x88 - Change heating parameters -- set points, enable
 #
 # example:
@@ -438,7 +441,7 @@ class PentairProtocol:
             parsed['state'] = self.parsePayloadFromFrame(parsed)
 
         except Exception as e:
-            pass
+            print(e)
 
         return parsed
 
@@ -453,7 +456,7 @@ class PentairProtocol:
             cmd = command.getParsedCommand()
 
         except Exception as e:
-            pass
+            print(e)
 
         return cmd
 
@@ -475,7 +478,7 @@ class PentairProtocol:
             frame = self.RECORD_SEPARATOR + frame + check.to_bytes(2, 'big') + self.RECORD_SEPARATOR
         
         except Exception as e:
-            pass
+            print(e)
 
         return frame
 
